@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Consent Recorder</title>
+  <style>
+    :root {
+      --primary-color: #007bff;
+      --accent-color: #0056b3;
+      --bg-light: #f4f4f8;
+      --radius: 12px;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-light);
+      padding: 40px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #333;
+    }
+
+    .logo {
+      margin-bottom: 20px;
+    }
+
+    .logo img {
+      height: 60px;
+      object-fit: contain;
+    }
+
+    h2 {
+      margin-bottom: 40px;
+      font-size: 2.5rem;
+      color: #222;
+    }
+
+    .container {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 40px;
+      max-width: 1400px;
+      width: 100%;
+      flex-wrap: nowrap;
+    }
+
+    iframe, video {
+      width: 100%;
+      height: 480px;
+      border: none;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      background-color: #fff;
+    }
+
+    .video-panel, .webcam-panel {
+      flex: 1;
+      min-width: 600px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      background-color: #fff;
+      position: relative;
+    }
+
+    #globalTimer {
+      position: fixed;
+      top: 20px;
+      right: 40px;
+      background-color: var(--primary-color);
+      color: white;
+      font-size: 1.2rem;
+      padding: 10px 18px;
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      z-index: 1000;
+      display: none;
+      font-weight: bold;
+    }
+
+    .actions {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      font-size: 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      box-shadow: var(--shadow);
+    }
+
+    button:hover {
+      background-color: var(--accent-color);
+    }
+
+    #downloadLink {
+      display: none;
+      margin-top: 10px;
+      color: var(--primary-color);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    #downloadLink:hover {
+      color: var(--accent-color);
+    }
+
+    #thankYouMsg {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: green;
+      margin-top: 15px;
+      display: none;
+    }
+
+    @media (max-width: 1100px) {
+      .container {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .video-panel, .webcam-panel {
+        min-width: 100%;
+        height: auto;
+      }
+
+      iframe, video {
+        height: 360px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Timer outside webcam -->
+  <div id="globalTimer">30s</div>
+
+  <div class="logo">
+    <img src="https://i0.wp.com/nu10.co/wp-content/uploads/2022/02/cropped-Nu10-Logo-header-1.png?fit=200%2C79&ssl=1" alt="Nu10 Logo">
+  </div>
+
+  <h2>Consent Recorder</h2>
+
+  <div class="container">
+    <!-- Left panel: Info video -->
+    <div class="video-panel">
+      <iframe 
+        src="https://generative-ai-video.s3.ap-south-1.amazonaws.com/Generative+AI+explained+in+2+minutes.mp4"
+        allowfullscreen>
+      </iframe>
+    </div>
+
+    <!-- Right panel: Webcam -->
+    <div class="webcam-panel">
+      <video id="webcam" autoplay muted style="display: none;"></video>
+
+      <div class="actions">
+        <button id="consentBtn">Give Consent</button>
+        <button id="stopBtn" style="display: none;">Stop Recording</button>
+      </div>
+
+      <a id="downloadLink">Download Recording</a>
+      <div id="thankYouMsg">Thanks for providing consent.</div>
+    </div>
+  </div>
+
+  <script>
+    const webcam = document.getElementById('webcam');
+    const consentBtn = document.getElementById('consentBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const downloadLink = document.getElementById('downloadLink');
+    const thankYouMsg = document.getElementById('thankYouMsg');
+    const globalTimer = document.getElementById('globalTimer');
+
+    const sessionId = `session_${Date.now()}`;
+    let mediaRecorder;
+    let recordedChunks = [];
+    let isRecording = false;
+    let stoppedByUser = false;
+    let timer;
+
+    function startTimer(duration) {
+      let timeLeft = duration;
+      globalTimer.style.display = 'block';
+      globalTimer.textContent = `${timeLeft}s`;
+
+      timer = setInterval(() => {
+        timeLeft--;
+        globalTimer.textContent = `${timeLeft}s`;
+
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          if (isRecording) stopRecording(false);
+        }
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timer);
+      globalTimer.style.display = 'none';
+    }
+
+    async function initWebcam() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        webcam.srcObject = stream;
+        webcam.style.display = 'block';
+
+        mediaRecorder = new MediaRecorder(stream);
+        recordedChunks = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) recordedChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          stopTimer();
+          const status = stoppedByUser ? "Completed" : "Completed";
+          saveRecording(status);
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        startTimer(30);
+      } catch (err) {
+        console.error('Failed to access webcam', err);
+        alert('Failed to access webcam');
+      }
+    }
+
+    function stopRecording(byUser = true) {
+      stoppedByUser = byUser;
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        isRecording = false;
+        consentBtn.style.display = 'none';
+        stopBtn.style.display = 'none';
+        thankYouMsg.style.display = 'block';
+      }
+    }
+
+    function saveRecording(status) {
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      const formData = new FormData();
+      formData.append('video', blob, `${sessionId}.webm`);
+      formData.append('sessionId', sessionId);
+      formData.append('status', status);
+
+      fetch('/upload', {
+        method: 'POST',
+        body: formData
+      }).then(() => {
+        const url = URL.createObjectURL(blob);
+        downloadLink.href = url;
+        downloadLink.download = `${sessionId}.webm`;
+        downloadLink.style.display = 'block';
+      }).catch(err => console.error('Upload failed', err));
+    }
+
+    consentBtn.addEventListener('click', () => {
+      consentBtn.style.display = 'none';
+      stopBtn.style.display = 'inline-block';
+      initWebcam();
+    });
+
+    stopBtn.addEventListener('click', () => {
+      stopRecording(true);
+    });
+
+    window.addEventListener('beforeunload', () => {
+      if (isRecording && !stoppedByUser) {
+        stopRecording(false);
+      }
+    });
+  </script>
+</body>
+</html>
