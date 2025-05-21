@@ -225,6 +225,10 @@
 
     <!-- Right panel: Webcam -->
     <div class="webcam-panel">
+      <!-- Consent statement above webcam -->
+      <div id="consentStatement" style="margin-bottom: 18px; font-size: 1.15rem; font-weight: 500; color: #222; text-align: center; background: #f8fafc; border-radius: 8px; padding: 12px 18px; box-shadow: 0 2px 8px #0001; max-width: 95%; display: none;">
+        I, [Full Name], give my consent to [Company Name] to use my [voice/content/logo].
+      </div>
       <video id="webcam" autoplay muted style="display: none;"></video>
 
       <div class="actions">
@@ -251,6 +255,7 @@
     let isRecording = false;
     let stoppedByUser = false;
     let timer;
+    let webcamStream = null;
 
     function startTimer(duration) {
       let timeLeft = duration;
@@ -276,6 +281,7 @@
     async function initWebcam() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        webcamStream = stream;
         webcam.srcObject = stream;
         webcam.style.display = 'block';
 
@@ -288,7 +294,13 @@
 
         mediaRecorder.onstop = () => {
           stopTimer();
-          const status = stoppedByUser ? "Completed" : "Completed";
+          // Stop webcam stream and hide video
+          if (webcamStream) {
+            webcamStream.getTracks().forEach(track => track.stop());
+            webcamStream = null;
+          }
+          webcam.style.display = 'none';
+          const status = stoppedByUser ? "Completed" : "Not Completed";
           saveRecording(status);
         };
 
@@ -309,6 +321,14 @@
         consentBtn.style.display = 'none';
         stopBtn.style.display = 'none';
         thankYouMsg.style.display = 'block';
+        // Hide consent statement
+        document.getElementById('consentStatement').style.display = 'none';
+        // Stop webcam stream and hide video (in case not handled in onstop)
+        if (webcamStream) {
+          webcamStream.getTracks().forEach(track => track.stop());
+          webcamStream = null;
+        }
+        webcam.style.display = 'none';
       }
     }
 
@@ -333,6 +353,7 @@
     consentBtn.addEventListener('click', () => {
       consentBtn.style.display = 'none';
       stopBtn.style.display = 'inline-block';
+      document.getElementById('consentStatement').style.display = 'block';
       initWebcam();
     });
 
