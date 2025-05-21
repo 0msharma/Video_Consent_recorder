@@ -28,14 +28,47 @@
       color: #333;
     }
 
-    .logo {
+    /* .logo {
       margin-bottom: 20px;
     }
 
     .logo img {
       height: 60px;
       object-fit: contain;
+    } */
+
+    .header-row {
+      display: flex;
+      align-items: center; /* Vertically center everything */
+      justify-content: center;
+      width: 100%;
+      margin-bottom: 40px;
+      position: relative;
+      min-height: 60px; /* Ensure enough height for logo */
     }
+
+    .logo {
+      position: absolute;
+      left: 0;
+      padding-left: 20px;
+      display: flex;
+      align-items: center; /* Align image vertically */
+    }
+
+    .logo img {
+      height: 60px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .title {
+      font-size: 2.5rem;
+      color: #222;
+      text-align: center;
+      margin: 0; /* Prevent extra vertical margin */
+      line-height: 1; /* Keeps vertical alignment tight */
+    }
+
 
     h2 {
       margin-bottom: 40px;
@@ -156,11 +189,17 @@
   <!-- Timer outside webcam -->
   <div id="globalTimer">30s</div>
 
-  <div class="logo">
+  <!-- <div class="logo">
     <img src="https://i0.wp.com/nu10.co/wp-content/uploads/2022/02/cropped-Nu10-Logo-header-1.png?fit=200%2C79&ssl=1" alt="Nu10 Logo">
   </div>
 
-  <h2>Consent Recorder</h2>
+  <h2>Consent Recorder</h2> -->
+  <div class="header-row">
+  <div class="logo">
+    <img src="https://i0.wp.com/nu10.co/wp-content/uploads/2022/02/cropped-Nu10-Logo-header-1.png?fit=200%2C79&ssl=1" alt="Nu10 Logo">
+  </div>
+  <h2 class="title">Consent Recorder</h2>
+  </div>
 
   <div class="container">
     <!-- Left panel: Info video -->
@@ -180,7 +219,7 @@
         <button id="stopBtn" style="display: none;">Stop Recording</button>
       </div>
 
-      <a id="downloadLink">Download Recording</a>
+      <!-- <a id="downloadLink">Download Recording</a> -->
       <div id="thankYouMsg">Thanks for providing consent.</div>
     </div>
   </div>
