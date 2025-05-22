@@ -202,10 +202,6 @@
   <!-- Timer outside webcam -->
   <div id="globalTimer">30s</div>
 
-  <!-- <div class="logo">
-    <img src="https://i0.wp.com/nu10.co/wp-content/uploads/2022/02/cropped-Nu10-Logo-header-1.png?fit=200%2C79&ssl=1" alt="Nu10 Logo">
-  </div>
-
   <h2>Consent Recorder</h2> -->
   <div class="header-row">
   <div class="logo">
@@ -217,10 +213,14 @@
   <div class="container">
     <!-- Left panel: Info video -->
     <div class="video-panel">
-      <iframe 
+      <!-- <iframe 
         src="https://generative-ai-video.s3.ap-south-1.amazonaws.com/Generative+AI+explained+in+2+minutes.mp4"
         allowfullscreen>
-      </iframe>
+      </iframe> -->
+      <video id="infoVideo" controls>
+        <source src="https://generative-ai-video.s3.ap-south-1.amazonaws.com/Generative+AI+explained+in+2+minutes.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
     </div>
 
     <!-- Right panel: Webcam -->
@@ -339,6 +339,10 @@
       formData.append('sessionId', sessionId);
       formData.append('status', status);
 
+      // Add watchedPercent to upload
+      const watchedPercent = ((maxWatchedTime / infoVideo.duration) * 100).toFixed(2);
+      formData.append('watchedPercent', watchedPercent || '0');
+
       fetch('/upload', {
         method: 'POST',
         body: formData
@@ -366,6 +370,44 @@
         stopRecording(false);
       }
     });
+
+    
+      const infoVideo = document.getElementById('infoVideo');
+      let maxWatchedTime = 0;
+
+      // Track max watch progress
+      infoVideo?.addEventListener('timeupdate', () => {
+        if (infoVideo.currentTime > maxWatchedTime) {
+          maxWatchedTime = infoVideo.currentTime;
+        }
+      });
+
+      function sendVideoWatchPercentage() {
+        if (!infoVideo || !infoVideo.duration) return;
+        const watchedPercent = ((maxWatchedTime / infoVideo.duration) * 100).toFixed(2);
+
+        // Optional: log for debugging
+        console.log(`Watched: ${watchedPercent}%`);
+
+        // Send to backend
+        fetch('/log-video-watch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId,
+            watchedPercent,
+            videoDuration: infoVideo.duration
+          })
+        }).catch(err => console.error('Failed to log watch %', err));
+      }
+
+      // Patch into existing stopRecording
+      const originalStopRecording = stopRecording;
+      stopRecording = function (...args) {
+        sendVideoWatchPercentage(); // log % watched before stopping
+        originalStopRecording.apply(this, args);
+      };
+    
   </script>
 </body>
 </html>

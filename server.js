@@ -31,20 +31,19 @@ function uploadToS3(Key, Body, ContentType) {
 }
 
 // Append session status to Excel log file in S3
-async function appendLogToS3(sessionId, status) {
+async function appendLogToS3(sessionId, status, watchedPercent = null) {
   let rows = [];
   let workbook;
 
   try {
-    // Try to download existing Excel log
     const data = await s3.getObject({ Bucket: BUCKET_NAME, Key: LOG_FILE_KEY }).promise();
     workbook = XLSX.read(data.Body, { type: 'buffer' });
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
     rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
   } catch (err) {
     if (err.code === 'NoSuchKey') {
-      // File does not exist: create new
-      rows = [['Session ID', 'Status', 'Timestamp']];
+      // File doesn't exist — create a new workbook
+      rows = [['Session ID', 'Status', 'Watched %']];
       workbook = XLSX.utils.book_new();
     } else {
       console.error('Error reading Excel file:', err);
@@ -52,11 +51,9 @@ async function appendLogToS3(sessionId, status) {
     }
   }
 
-  // Append new session
-  const timestamp = new Date().toISOString();
-  rows.push([sessionId, status, timestamp]);
+  
+  rows.push([sessionId, status, watchedPercent !== null ? `${watchedPercent}%` : 'N/A']);
 
-  // Create new sheet and upload
   const newSheet = XLSX.utils.aoa_to_sheet(rows);
   const newWorkbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(newWorkbook, newSheet, 'Log');
@@ -70,12 +67,14 @@ async function appendLogToS3(sessionId, status) {
     ContentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   }).promise();
 
-  console.log(`✅ Log saved for ${sessionId} (${status})`);
+  console.log(`✅ Log saved for ${sessionId} (${status}) | Watched: ${watchedPercent ?? 'N/A'}%`);
 }
+
 
 // Handle video upload and log session
 app.post('/upload', upload.single('video'), async (req, res) => {
-  const { sessionId, status } = req.body;
+  const { sessionId, status, watchedPercent } = req.body;
+  console.log(`Incoming sessionId=${sessionId}, status=${status}, watchedPercent=${watchedPercent}`);
   const videoBuffer = req.file?.buffer;
   const videoMime = req.file?.mimetype || 'video/webm';
 
@@ -84,19 +83,16 @@ app.post('/upload', upload.single('video'), async (req, res) => {
   }
 
   try {
-    // Upload video to S3
     const videoKey = `${sessionId}.webm`;
     await uploadToS3(videoKey, videoBuffer, videoMime);
-
-    // Append log
-    await appendLogToS3(sessionId, status);
-
+    await appendLogToS3(sessionId, status, watchedPercent);
     res.sendStatus(200);
   } catch (err) {
     console.error('❌ Upload or logging failed:', err);
     res.status(500).send('Server error');
   }
 });
+
 
 app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
