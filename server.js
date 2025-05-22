@@ -31,7 +31,7 @@ function uploadToS3(Key, Body, ContentType) {
 }
 
 // Append session status to Excel log file in S3
-async function appendLogToS3(sessionId, status, watchedPercent = null) {
+async function appendLogToS3(sessionId, status, watchedPercent = null, videoId = null) {
   let rows = [];
   let workbook;
 
@@ -43,7 +43,7 @@ async function appendLogToS3(sessionId, status, watchedPercent = null) {
   } catch (err) {
     if (err.code === 'NoSuchKey') {
       // File doesn't exist — create a new workbook
-      rows = [['Session ID', 'Status', 'Watched %']];
+      rows = [['Session ID', 'Status', 'Watched %', 'Video ID']];
       workbook = XLSX.utils.book_new();
     } else {
       console.error('Error reading Excel file:', err);
@@ -52,7 +52,7 @@ async function appendLogToS3(sessionId, status, watchedPercent = null) {
   }
 
   
-  rows.push([sessionId, status, watchedPercent !== null ? `${watchedPercent}%` : 'N/A']);
+  rows.push([sessionId, status, watchedPercent !== null ? `${watchedPercent}%` : 'N/A',  videoId || 'unknown']);
 
   const newSheet = XLSX.utils.aoa_to_sheet(rows);
   const newWorkbook = XLSX.utils.book_new();
@@ -67,14 +67,14 @@ async function appendLogToS3(sessionId, status, watchedPercent = null) {
     ContentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   }).promise();
 
-  console.log(`✅ Log saved for ${sessionId} (${status}) | Watched: ${watchedPercent ?? 'N/A'}%`);
+  console.log(`✅ Log saved for ${sessionId} (${status}) | Watched: ${watchedPercent ?? 'N/A'}% | Video ID: ${videoId || 'unknown'}`);
 }
 
 
 // Handle video upload and log session
 app.post('/upload', upload.single('video'), async (req, res) => {
-  const { sessionId, status, watchedPercent } = req.body;
-  console.log(`Incoming sessionId=${sessionId}, status=${status}, watchedPercent=${watchedPercent}`);
+  const { sessionId, status, watchedPercent, videoId } = req.body;
+  console.log(`Incoming sessionId=${sessionId}, status=${status}, watchedPercent=${watchedPercent}, videoId=${videoId}`);
   const videoBuffer = req.file?.buffer;
   const videoMime = req.file?.mimetype || 'video/webm';
 
@@ -85,13 +85,42 @@ app.post('/upload', upload.single('video'), async (req, res) => {
   try {
     const videoKey = `${sessionId}.webm`;
     await uploadToS3(videoKey, videoBuffer, videoMime);
-    await appendLogToS3(sessionId, status, watchedPercent);
+    await appendLogToS3(sessionId, status, watchedPercent, videoId);
     res.sendStatus(200);
   } catch (err) {
     console.error('❌ Upload or logging failed:', err);
     res.status(500).send('Server error');
   }
 });
+
+
+// async function resetLogFile() {
+//   const headers = [['Session ID', 'Status', 'Watched %', 'Video ID']];
+//   const sheet = XLSX.utils.aoa_to_sheet(headers);
+//   const workbook = XLSX.utils.book_new();
+//   XLSX.utils.book_append_sheet(workbook, sheet, 'Log');
+
+//   const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
+
+//   await s3.putObject({
+//     Bucket: BUCKET_NAME,
+//     Key: LOG_FILE_KEY,
+//     Body: buffer,
+//     ContentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+//   }).promise();
+
+//   console.log('🧹 Excel log reset with headers.');
+// }
+
+// app.post('/reset-log', async (req, res) => {
+//   try {
+//     await resetLogFile();
+//     res.status(200).send('✅ Log file reset successfully.');
+//   } catch (err) {
+//     console.error('❌ Failed to reset log file:', err);
+//     res.status(500).send('Failed to reset log file');
+//   }
+// });
 
 
 app.listen(port, () => {

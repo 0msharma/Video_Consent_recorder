@@ -202,7 +202,7 @@
   <!-- Timer outside webcam -->
   <div id="globalTimer">30s</div>
 
-  <h2>Consent Recorder</h2> -->
+ 
   <div class="header-row">
   <div class="logo">
     <img src="https://i0.wp.com/nu10.co/wp-content/uploads/2022/02/cropped-Nu10-Logo-header-1.png?fit=200%2C79&ssl=1" alt="Nu10 Logo">
@@ -217,7 +217,7 @@
         src="https://generative-ai-video.s3.ap-south-1.amazonaws.com/Generative+AI+explained+in+2+minutes.mp4"
         allowfullscreen>
       </iframe> -->
-      <video id="infoVideo" controls>
+      <video id="infoVideo" controls data-video-id="campaign_001">
         <source src="https://generative-ai-video.s3.ap-south-1.amazonaws.com/Generative+AI+explained+in+2+minutes.mp4" type="video/mp4">
         Your browser does not support the video tag.
       </video>
@@ -227,7 +227,7 @@
     <div class="webcam-panel">
       <!-- Consent statement above webcam -->
       <div id="consentStatement" style="margin-bottom: 18px; font-size: 1.15rem; font-weight: 500; color: #222; text-align: center; background: #f8fafc; border-radius: 8px; padding: 12px 18px; box-shadow: 0 2px 8px #0001; max-width: 95%; display: none;">
-        I, [Full Name], give my consent to [Company Name] to use my [voice/content/logo].
+        My name is [Your Full Name]. I have thoroughly reviewed and understood the product, and I am ready to proceed with the application.
       </div>
       <video id="webcam" autoplay muted style="display: none;"></video>
 
@@ -256,6 +256,7 @@
     let stoppedByUser = false;
     let timer;
     let webcamStream = null;
+
 
     function startTimer(duration) {
       let timeLeft = duration;
@@ -343,6 +344,10 @@
       const watchedPercent = ((maxWatchedTime / infoVideo.duration) * 100).toFixed(2);
       formData.append('watchedPercent', watchedPercent || '0');
 
+      // Add video id or campaign id
+      const videoId = infoVideo.getAttribute('data-video-id') || 'unknown_video';
+      formData.append('videoId', videoId);
+
       fetch('/upload', {
         method: 'POST',
         body: formData
@@ -407,7 +412,6 @@
         sendVideoWatchPercentage(); // log % watched before stopping
         originalStopRecording.apply(this, args);
       };
-    
   </script>
 </body>
 </html>
