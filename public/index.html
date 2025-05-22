@@ -194,6 +194,50 @@
         margin-bottom: 10px;
       }
 
+      .language-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .lang-btn {
+    background-color: #e2e8f0;
+    color: #222;
+    border: 1px solid #ccc;
+    padding: 12px 20px;
+    font-size: 15px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+  }
+
+  .lang-btn:hover {
+    background-color: #dbeafe;
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+
+  #consentStatement {
+    margin-bottom: 18px;
+    font-size: 1.15rem;
+    font-weight: 500;
+    color: #222;
+    text-align: center;
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 12px 18px;
+    box-shadow: 0 2px 8px #0001;
+    max-width: 95%;
+    display: none;
+  }
+
+  #languageInstruction {
+    margin-bottom: 16px;
+  }
+
     }
   </style>
 </head>
@@ -225,19 +269,39 @@
 
     <!-- Right panel: Webcam -->
     <div class="webcam-panel">
-      <!-- Consent statement above webcam -->
-      <div id="consentStatement" style="margin-bottom: 18px; font-size: 1.15rem; font-weight: 500; color: #222; text-align: center; background: #f8fafc; border-radius: 8px; padding: 12px 18px; box-shadow: 0 2px 8px #0001; max-width: 95%; display: none;">
-        My name is [Your Full Name]. I have thoroughly reviewed and understood the product, and I am ready to proceed with the application.
-      </div>
-      <video id="webcam" autoplay muted style="display: none;"></video>
+      
+      <!-- Language Instruction -->
+<div id="languageInstruction" style="text-align: center; margin-bottom: 18px; font-size: 1.05rem; color: #444;">
+  Select the language in which you want to give your consent. Then click on <strong>'Give Consent'</strong> to start recording and speak the displayed text aloud in the selected language.
+</div>
 
-      <div class="actions">
-        <button id="consentBtn">Give Consent</button>
-        <button id="stopBtn" style="display: none;">Stop Recording</button>
-      </div>
+<!-- Language Selection Buttons -->
+<div class="language-buttons">
+  <button class="lang-btn" onclick="showConsent('en')">English</button>
+  <button class="lang-btn" onclick="showConsent('kn')">ಕನ್ನಡ</button>
+  <button class="lang-btn" onclick="showConsent('hi')">हिन्दी</button>
+  <button class="lang-btn" onclick="showConsent('ta')">தமிழ்</button>
+  <button class="lang-btn" onclick="showConsent('te')">తెలుగు</button>
+  <button class="lang-btn" onclick="showConsent('bn')">বাংলা</button>
+  <!-- <button class="lang-btn" onclick="showConsent('mr')">मराठी</button> -->
+  
+</div>
+
+<!-- Consent Statement -->
+<div id="consentStatement">
+  <!-- Populated dynamically -->
+</div>
+
+<!-- Action Buttons -->
+<div class="actions">
+  <button id="consentBtn">Give Consent</button>
+  <button id="stopBtn" style="display: none;">Stop Recording</button>
+</div>
+
+<video id="webcam" autoplay muted style="display: none;"></video>
 
       <!-- <a id="downloadLink">Download Recording</a> -->
-      <div id="thankYouMsg">Thanks for providing consent.</div>
+      <div id="thankYouMsg">Thanks for providing the consent.</div>
     </div>
   </div>
 
@@ -432,6 +496,26 @@
         }).catch(err => console.error('Failed to log watch duration', err));
       }
 
+
+const statements = {
+    en: "My name is [Your Full Name]. I have thoroughly reviewed and understood the product, and I am ready to proceed with the application.",
+    kn: "ನನ್ನ ಹೆಸರು [ಪೂರ್ಣ ಹೆಸರು]. ನಾನು ನಿಮ್ಮ ಉತ್ಪನ್ನವನ್ನು ಸಂಪೂರ್ಣವಾಗಿ ಪರಿಶೀಲಿಸಿ ಅರ್ಥ ಮಾಡಿಕೊಂಡಿದ್ದೇನೆ, ಮತ್ತು ಅರ್ಜಿಗೆ ಮುಂದಾಗಲು ಸಿದ್ಧನಾಗಿದ್ದೇನೆ.",
+    hi: "मेरा नाम [पूरा नाम] है। मैंने उत्पाद को पूरी तरह से समझ लिया है और मैं आवेदन के लिए आगे बढ़ने के लिए तैयार हूँ।",
+    ta: "என் பெயர் [முழு பெயர்]. தயாரிப்பை நன்கு மதித்து புரிந்துள்ளேன். விண்ணப்பத்திற்காக தொடர்ந்து செல்ல தயாராக இருக்கிறேன்.",
+    te: "నా పేరు [పూర్తి పేరు]. నేను ఉత్పత్తిని పూర్తిగా సమీక్షించి, అర్థం చేసుకున్నాను. దరఖాస్తు ప్రక్రియ కొనసాగించేందుకు సిద్ధంగా ఉన్నాను.",
+    bn: "আমার নাম [পূর্ণ নাম]। আমি পণ্যটি পুরোপুরি পর্যালোচনা করে বুঝে গেছি এবং আবেদন করার জন্য প্রস্তুত।",
+    mr: "माझं नाव [पूर्ण नाव] आहे. मी उत्पादन नीट पाहिलं आणि समजून घेतलं आहे. मी अर्ज पुढे सुरू करण्यास तयार आहे."
+  };
+
+  function showConsent(lang) {
+    const consentDiv = document.getElementById('consentStatement');
+    consentDiv.innerText = statements[lang];
+    consentDiv.style.display = 'block';
+
+    // Show webcam and Give Consent button
+    document.getElementById('webcam').style.display = 'block';
+    document.getElementById('consentBtn').style.display = 'inline-block';
+  }
       // Patch into existing stopRecording
       const originalStopRecording = stopRecording;
       stopRecording = function (...args) {
