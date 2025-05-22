@@ -31,7 +31,7 @@ function uploadToS3(Key, Body, ContentType) {
 }
 
 // Append session status to Excel log file in S3
-async function appendLogToS3(sessionId, status, watchedPercent = null, videoId = null) {
+async function appendLogToS3(sessionId, status, watchedDuration = null, videoId = null) {
   let rows = [];
   let workbook;
 
@@ -43,7 +43,7 @@ async function appendLogToS3(sessionId, status, watchedPercent = null, videoId =
   } catch (err) {
     if (err.code === 'NoSuchKey') {
       // File doesn't exist — create a new workbook
-      rows = [['Session ID', 'Status', 'Watched %', 'Video ID']];
+      rows = [['Session ID', 'Status', 'Watched Duration (seconds)', 'Video ID']];
       workbook = XLSX.utils.book_new();
     } else {
       console.error('Error reading Excel file:', err);
@@ -52,7 +52,7 @@ async function appendLogToS3(sessionId, status, watchedPercent = null, videoId =
   }
 
   
-  rows.push([sessionId, status, watchedPercent !== null ? `${watchedPercent}%` : 'N/A',  videoId || 'unknown']);
+  rows.push([sessionId, status, watchedDuration !== null ? `${watchedDuration}` : 'N/A',  videoId || 'unknown']);
 
   const newSheet = XLSX.utils.aoa_to_sheet(rows);
   const newWorkbook = XLSX.utils.book_new();
@@ -67,14 +67,14 @@ async function appendLogToS3(sessionId, status, watchedPercent = null, videoId =
     ContentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   }).promise();
 
-  console.log(`✅ Log saved for ${sessionId} (${status}) | Watched: ${watchedPercent ?? 'N/A'}% | Video ID: ${videoId || 'unknown'}`);
+  console.log(`✅ Log saved for ${sessionId} (${status}) | Watched: ${watchedDuration ?? 'N/A'} | Video ID: ${videoId || 'unknown'}`);
 }
 
 
 // Handle video upload and log session
 app.post('/upload', upload.single('video'), async (req, res) => {
-  const { sessionId, status, watchedPercent, videoId } = req.body;
-  console.log(`Incoming sessionId=${sessionId}, status=${status}, watchedPercent=${watchedPercent}, videoId=${videoId}`);
+  const { sessionId, status, watchedDuration, videoId } = req.body;
+  console.log(`Incoming sessionId=${sessionId}, status=${status}, watchedDuration=${watchedDuration}, videoId=${videoId}`);
   const videoBuffer = req.file?.buffer;
   const videoMime = req.file?.mimetype || 'video/webm';
 
@@ -85,7 +85,7 @@ app.post('/upload', upload.single('video'), async (req, res) => {
   try {
     const videoKey = `${sessionId}.webm`;
     await uploadToS3(videoKey, videoBuffer, videoMime);
-    await appendLogToS3(sessionId, status, watchedPercent, videoId);
+    await appendLogToS3(sessionId, status, watchedDuration, videoId);
     res.sendStatus(200);
   } catch (err) {
     console.error('❌ Upload or logging failed:', err);
@@ -95,7 +95,7 @@ app.post('/upload', upload.single('video'), async (req, res) => {
 
 
 // async function resetLogFile() {
-//   const headers = [['Session ID', 'Status', 'Watched %', 'Video ID']];
+//   const headers = [['Session ID', 'Status', 'Watched Duration', 'Video ID']];
 //   const sheet = XLSX.utils.aoa_to_sheet(headers);
 //   const workbook = XLSX.utils.book_new();
 //   XLSX.utils.book_append_sheet(workbook, sheet, 'Log');

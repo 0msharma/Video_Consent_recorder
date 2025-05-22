@@ -217,8 +217,8 @@
         src="https://generative-ai-video.s3.ap-south-1.amazonaws.com/Generative+AI+explained+in+2+minutes.mp4"
         allowfullscreen>
       </iframe> -->
-      <video id="infoVideo" controls data-video-id="campaign_001">
-        <source src="https://generative-ai-video.s3.ap-south-1.amazonaws.com/Generative+AI+explained+in+2+minutes.mp4" type="video/mp4">
+      <video id="infoVideo" controls data-video-id="">
+        <source id="videoSource" src="" type="video/mp4">
         Your browser does not support the video tag.
       </video>
     </div>
@@ -256,6 +256,32 @@
     let stoppedByUser = false;
     let timer;
     let webcamStream = null;
+
+    // Map campaign IDs to S3 video URLs
+    const campaignVideoMap = {
+      '001': 'https://generative-ai-video.s3.ap-south-1.amazonaws.com/Activ+One+Plan+_+No+Limit+on+Hospitalization+Expenses+_+100%25+Health.+100%25+Health+Insurance..mp4',
+      '002': 'https://generative-ai-video.s3.ap-south-1.amazonaws.com/Lost+Medicaid+or+CHIP+Coverage++HealthCare.gov+is+Here+For+You.mp4',
+      // Add more campaignId: videoURL pairs here
+    };
+
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const campaignId = urlParams.get('id');
+
+      const videoUrl = campaignVideoMap[campaignId];
+      const infoVideo = document.getElementById('infoVideo');
+      const source = document.createElement('source');
+
+      if (videoUrl) {
+        source.src = videoUrl;
+        source.type = 'video/mp4';
+        infoVideo.appendChild(source);
+        infoVideo.setAttribute('data-video-id', `campaign_${campaignId}`);
+        infoVideo.load();
+      } else {
+        alert('Invalid campaign ID');
+      }
+
 
 
     function startTimer(duration) {
@@ -340,9 +366,9 @@
       formData.append('sessionId', sessionId);
       formData.append('status', status);
 
-      // Add watchedPercent to upload
-      const watchedPercent = ((maxWatchedTime / infoVideo.duration) * 100).toFixed(2);
-      formData.append('watchedPercent', watchedPercent || '0');
+      // Add watchedDuration to upload
+      const watchedDuration = Math.floor(maxWatchedTime); //((maxWatchedTime / infoVideo.duration) * 100).toFixed(2);
+      formData.append('watchedDuration', watchedDuration.toString());
 
       // Add video id or campaign id
       const videoId = infoVideo.getAttribute('data-video-id') || 'unknown_video';
@@ -377,7 +403,7 @@
     });
 
     
-      const infoVideo = document.getElementById('infoVideo');
+      // const infoVideo = document.getElementById('infoVideo');
       let maxWatchedTime = 0;
 
       // Track max watch progress
@@ -389,10 +415,10 @@
 
       function sendVideoWatchPercentage() {
         if (!infoVideo || !infoVideo.duration) return;
-        const watchedPercent = ((maxWatchedTime / infoVideo.duration) * 100).toFixed(2);
+        const watchedDuration =  Math.floor(maxWatchedTime); //((maxWatchedTime / infoVideo.duration) * 100).toFixed(2);
 
         // Optional: log for debugging
-        console.log(`Watched: ${watchedPercent}%`);
+        console.log(`Watched: ${watchedDuration}`);
 
         // Send to backend
         fetch('/log-video-watch', {
@@ -400,16 +426,16 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             sessionId,
-            watchedPercent,
+            watchedDuration,
             videoDuration: infoVideo.duration
           })
-        }).catch(err => console.error('Failed to log watch %', err));
+        }).catch(err => console.error('Failed to log watch duration', err));
       }
 
       // Patch into existing stopRecording
       const originalStopRecording = stopRecording;
       stopRecording = function (...args) {
-        sendVideoWatchPercentage(); // log % watched before stopping
+        sendVideoWatchPercentage(); // log watched duration before stopping
         originalStopRecording.apply(this, args);
       };
   </script>
