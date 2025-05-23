@@ -294,7 +294,7 @@
 
 <!-- Action Buttons -->
 <div class="actions">
-  <button id="consentBtn">Give Consent</button>
+  <button id="consentBtn" style="display: none;">Give Consent</button>
   <button id="stopBtn" style="display: none;">Stop Recording</button>
 </div>
 
@@ -312,6 +312,9 @@
     const downloadLink = document.getElementById('downloadLink');
     const thankYouMsg = document.getElementById('thankYouMsg');
     const globalTimer = document.getElementById('globalTimer');
+    const languageInstruction = document.getElementById('languageInstruction');
+    const languageButtons = document.querySelectorAll('.lang-btn');
+   
 
     const sessionId = `session_${Date.now()}`;
     let mediaRecorder;
@@ -409,8 +412,11 @@
       if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
         isRecording = false;
+
         consentBtn.style.display = 'none';
         stopBtn.style.display = 'none';
+        languageInstruction.style.display = 'none';
+        languageButtons.forEach(btn => btn.style.display = 'none');
         thankYouMsg.style.display = 'block';
         // Hide consent statement
         document.getElementById('consentStatement').style.display = 'none';
@@ -477,7 +483,7 @@
         }
       });
 
-      function sendVideoWatchPercentage() {
+      function sendVideoWatchDuration() {
         if (!infoVideo || !infoVideo.duration) return;
         const watchedDuration =  Math.floor(maxWatchedTime); //((maxWatchedTime / infoVideo.duration) * 100).toFixed(2);
 
@@ -513,13 +519,13 @@ const statements = {
     consentDiv.style.display = 'block';
 
     // Show webcam and Give Consent button
-    document.getElementById('webcam').style.display = 'block';
+    // document.getElementById('webcam').style.display = 'block';
     document.getElementById('consentBtn').style.display = 'inline-block';
   }
       // Patch into existing stopRecording
       const originalStopRecording = stopRecording;
       stopRecording = function (...args) {
-        sendVideoWatchPercentage(); // log watched duration before stopping
+        sendVideoWatchDuration(); // log watched duration before stopping
         originalStopRecording.apply(this, args);
       };
   </script>
